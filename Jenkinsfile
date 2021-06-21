@@ -10,7 +10,7 @@ def skip_publish_opt = (
 pipeline {
   agent none
   options {
-    timeout(time: 1, unit: 'HOUR')
+    timeout(time: 1, unit: 'HOURS')
   }
 
   stages {
@@ -35,31 +35,21 @@ pipeline {
       }
     }
 
-    stage('test') {
-      stage('unit tests') {
-        agent { label 'nixos-mayastor' }
-        steps {
-          sh 'printenv'
-          sh 'nix-shell --run "./scripts/citest.sh"'
-        }
-        post {
-          always {
-            junit 'moac-xunit-report.xml'
-          }
+    stage('unit tests') {
+      agent { label 'nixos-mayastor' }
+      steps {
+        sh 'printenv'
+        sh 'nix-shell --run "./scripts/citest.sh"'
+      }
+      post {
+        always {
+          junit 'moac-xunit-report.xml'
         }
       }
     }
 
     stage('build image') {
       agent { label 'nixos-mayastor' }
-      when {
-        beforeAgent true
-        anyOf {
-          branch 'master'
-          branch 'release/*'
-          branch 'develop'
-        }
-      }
       steps {
         withCredentials([usernamePassword(credentialsId: 'dockerhub', usernameVariable: 'USERNAME', passwordVariable: 'PASSWORD')]) {
           sh 'echo $PASSWORD | docker login -u $USERNAME --password-stdin'
