@@ -25,6 +25,12 @@ pipeline {
           ],
           statusMessage: [ content: 'Pipeline started' ]
         ])
+        withCredentials([
+          usernamePassword(credentialsId: 'github-checkout', usernameVariable: 'ghuser', passwordVariable: 'ghpw')
+        ]) {
+          sh "git clone https://${ghuser}:${ghpw}@github.com/mayadata-io/mayastor-e2e.git"
+          sh 'cd mayastor-e2e && git checkout develop'
+        }
       }
     }
 
