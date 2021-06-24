@@ -77,8 +77,11 @@ function createK8sPoolResource (
     const status = { state };
     status.disks = disks.map((d) => `aio://${d}`);
     if (reason != null) status.reason = reason;
-    if (capacity != null) status.capacity = capacity;
-    if (used != null) status.used = used;
+    if (capacity != null && used != null) {
+      status.capacity = capacity;
+      status.used = used;
+      status.avail = capacity - used;
+    }
     if (state != null) {
       status.spec = {
         node: node,
@@ -147,6 +150,7 @@ module.exports = function () {
       expect(obj.status.disks).to.deep.equal(['aio:///dev/sdc', 'aio:///dev/sdb']);
       expect(obj.status.capacity).to.be.undefined;
       expect(obj.status.used).to.be.undefined;
+      expect(obj.status.avail).to.be.undefined;
     });
 
     it('should create valid mayastor pool without status', () => {
@@ -374,6 +378,7 @@ module.exports = function () {
           disks: ['aio:///dev/sdb'],
           capacity: 100,
           used: 10,
+          avail: 90,
           spec: { node: 'node', disks: ['/dev/sdb', '/dev/sdc'] }
         });
       });
@@ -388,7 +393,8 @@ module.exports = function () {
           disks: ['aio:///dev/sdb'],
           state: 'POOL_DEGRADED',
           capacity: 100,
-          used: 10
+          used: 10,
+          avail: 90
         });
         const createPoolStub1 = sinon.stub(node1, 'createPool');
         const createPoolStub2 = sinon.stub(node2, 'createPool');
@@ -423,6 +429,7 @@ module.exports = function () {
           disks: ['aio:///dev/sdb'],
           capacity: 100,
           used: 10,
+          avail: 90,
           spec: { node: 'node2', disks: ['/dev/sdb', '/dev/sdc'] }
         });
       });
@@ -1327,6 +1334,7 @@ module.exports = function () {
         capacity: 100,
         disks: ['aio:///dev/sdb'],
         used: 4,
+        avail: 96,
         spec: { node: 'node1', disks: ['/dev/sdb'] }
       });
     });

@@ -83,7 +83,8 @@ export class PoolResource extends CustomResource {
     reason?: string,
     disks?: string[],
     capacity?: number,
-    used?: number
+    used?: number,
+    avail?: number,
   };
 
   // Create and validate pool custom resource.
@@ -111,6 +112,7 @@ export class PoolResource extends CustomResource {
       //if (typeof disks !== 'string') {
       this.spec = { node, disks };
     }
+    const avail = cr.status?.capacity - cr.status?.used;
     this.status = {
       state: poolStateFromString(cr.status?.state),
       spec: cr.status?.spec,
@@ -118,6 +120,7 @@ export class PoolResource extends CustomResource {
       disks: cr.status?.disks,
       capacity: cr.status?.capacity,
       used: cr.status?.used,
+      avail: Number.isNaN(avail) ? undefined : avail,
     };
   }
 
@@ -338,6 +341,7 @@ export class PoolOperator {
         undefined,
         undefined,
         undefined,
+        undefined,
         resource.status.spec
       );
     }
@@ -447,6 +451,7 @@ export class PoolOperator {
     if (state === PoolState.Offline) {
       reason = `mayastor does not run on the node "${pool.node}"`;
     }
+    var avail = pool.capacity - pool.used;
 
     await this._updateResourceProps(
       name,
@@ -455,6 +460,7 @@ export class PoolOperator {
       pool.disks,
       pool.capacity,
       pool.used,
+      Number.isNaN(avail) ? undefined : avail,
       resource.status.spec || resource.spec
     );
   }
@@ -472,6 +478,7 @@ export class PoolOperator {
   // @param [disks]    Disk URIs.
   // @param [capacity] Capacity of the pool in bytes.
   // @param [used]     Used bytes in the pool.
+  // @param [avail]    Free space in the pool.
   async _updateResourceProps (
     name: string,
     state: PoolState,
@@ -479,6 +486,7 @@ export class PoolOperator {
     disks?: string[],
     capacity?: number,
     used?: number,
+    avail?: number,
     specInStatus?: PoolSpec,
   ) {
     try {
@@ -489,6 +497,7 @@ export class PoolOperator {
           (reason === orig.status.reason || (!reason && !orig.status.reason)) &&
           (capacity === undefined || capacity === orig.status.capacity) &&
           (used === undefined || used === orig.status.used) &&
+          (avail === undefined || avail === orig.status.avail) &&
           (disks === undefined || _.isEqual(disks, orig.status.disks)) &&
           (specInStatus === undefined || specInStatus === orig.status.spec)
         ) {
@@ -511,6 +520,9 @@ export class PoolOperator {
         }
         if (used != null) {
           resource.status.used = used;
+        }
+        if (avail != null) {
+          resource.status.avail = avail;
         }
         return resource;
       });
